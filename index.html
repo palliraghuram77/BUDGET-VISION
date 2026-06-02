@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Budget Vision" />
+  <title>Budget Vision 💰</title>
+  <link rel="manifest" href="manifest.json" />
+  <script>
+    const t = localStorage.getItem('budget_theme') || 'auto';
+    document.documentElement.setAttribute('data-theme', t);
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Firebase -->
+  <script type="module" src="firebase-init.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-inner">
+    <div class="login-logo">💰</div>
+    <h1 class="login-title">Budget Vision</h1>
+    <p class="login-sub">Smart money tracking, made simple</p>
+    <div class="login-card">
+      <!-- Loading state -->
+      <div class="auth-loading" id="auth-loading">
+        <div class="auth-spinner"></div>
+        <p>Checking sign-in status...</p>
+      </div>
+      <!-- Login buttons -->
+      <div id="auth-buttons" class="hidden">
+        <button class="login-google-btn" id="google-signin-btn" onclick="signInWithGoogle()">
+          <svg width="20" height="20" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Sign in with Google
+        </button>
+        <p class="login-note">🔒 Secure sign-in via Google. Your data stays on this device.</p>
+      </div>
+      <!-- Error state -->
+      <div id="auth-error" class="auth-error hidden">
+        <span id="auth-error-msg"></span>
+        <button onclick="document.getElementById('auth-error').classList.add('hidden');document.getElementById('auth-buttons').classList.remove('hidden')">Try again</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app hidden" id="main-app">
+
+  <!-- HOME TAB -->
+  <div class="tab-content active" id="tab-home">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="avatar-sm" id="topbar-avatar" onclick="switchTab('profile')"></div>
+        <div>
+          <div class="topbar-greeting">Good <span id="greeting-time"></span> 👋</div>
+          <div class="topbar-name" id="topbar-username">User</div>
+        </div>
+      </div>
+      <div class="topbar-month" id="topbar-month"></div>
+    </div>
+    <div class="hero-card glass-card">
+      <div class="hero-label">Monthly Income</div>
+      <div class="hero-input-row">
+        <span class="hero-rupee">₹</span>
+        <input type="number" id="income-input" class="hero-input" placeholder="0" min="0" inputmode="numeric" />
+      </div>
+      <div class="hero-sub">tap to edit your income</div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="hero-stat-val red" id="hs-spent">₹0</div><div class="hero-stat-label">Spent</div></div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat"><div class="hero-stat-val green" id="hs-left">₹0</div><div class="hero-stat-label">Left</div></div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat"><div class="hero-stat-val gold" id="hs-rate">0%</div><div class="hero-stat-label">Saved</div></div>
+      </div>
+    </div>
+    <div class="glass-card">
+      <div class="card-header">
+        <span class="card-title">Breakdown</span>
+        <span class="card-badge" id="total-badge">₹0 total</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="donut-chart"></canvas>
+        <div class="chart-center">
+          <div class="chart-center-pct" id="chart-pct">0%</div>
+          <div class="chart-center-label">of income</div>
+        </div>
+      </div>
+      <div class="chart-legend" id="chart-legend"></div>
+    </div>
+    <div class="glass-card">
+      <div class="card-header">
+        <span class="card-title">Smart Insights</span>
+        <span class="insight-count" id="insight-count">0</span>
+      </div>
+      <div id="insights-list" class="insights-list">
+        <div class="insight-empty">Add income and expenses to see insights</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAILY TAB -->
+  <div class="tab-content" id="tab-daily">
+    <div class="page-header">
+      <div class="page-title">Daily Expenses</div>
+      <div class="page-sub">Type what you spent — we'll sort it automatically</div>
+    </div>
+    <div class="glass-card">
+      <div class="daily-input-label">What did you spend on?</div>
+      <textarea id="daily-desc" class="daily-textarea" placeholder="e.g. bought pizza for ₹200, paid electricity bill 800, watched movie 350..." rows="2"></textarea>
+      <div class="daily-amount-row">
+        <div class="daily-amount-wrap">
+          <span class="daily-rupee">₹</span>
+          <input type="number" id="daily-amount" class="daily-amount-input" placeholder="Amount" inputmode="numeric" min="0" />
+        </div>
+        <div class="daily-detected">
+          <span class="detected-label">Category:</span>
+          <span class="detected-badge" id="detected-badge">—</span>
+        </div>
+      </div>
+      <div class="override-label">Override category:</div>
+      <div class="cat-chips" id="cat-chips"></div>
+      <button class="daily-add-btn" onclick="addDailyExpense()">+ Add Expense</button>
+    </div>
+    <div class="glass-card">
+      <div class="card-header">
+        <span class="card-title">Today's Log</span>
+        <span class="daily-total" id="daily-total">₹0 today</span>
+      </div>
+      <div id="daily-list" class="daily-list"><div class="insight-empty">No expenses logged today</div></div>
+    </div>
+    <div class="glass-card">
+      <div class="card-header">
+        <span class="card-title">This Week</span>
+        <span class="card-badge" id="week-total">₹0</span>
+      </div>
+      <div id="week-list" class="week-list"></div>
+    </div>
+  </div>
+
+  <!-- EXPENSES TAB -->
+  <div class="tab-content" id="tab-expenses">
+    <div class="page-header">
+      <div class="page-title">Expenses</div>
+      <div class="page-sub">Track where your money goes</div>
+    </div>
+    <div class="categories-list" id="categories-list"></div>
+    <div class="glass-card">
+      <div class="card-header">
+        <span class="card-title">50 · 30 · 20 Rule</span>
+        <span class="rule-status" id="rule-status">—</span>
+      </div>
+      <div class="rule-rows" id="rule-rows"></div>
+    </div>
+  </div>
+
+  <!-- PROFILE TAB -->
+  <div class="tab-content" id="tab-profile">
+    <div class="page-header">
+      <div class="page-title">Profile</div>
+      <div class="page-sub">Your account and settings</div>
+    </div>
+    <div class="glass-card profile-hero-card">
+      <div class="profile-photo-wrap">
+        <div class="profile-photo" id="profile-photo-display"></div>
+        <div class="google-badge">G</div>
+      </div>
+      <div class="profile-name" id="profile-name-display">User</div>
+      <div class="profile-email" id="profile-email-display">user@gmail.com</div>
+      <div class="profile-sub">Signed in with Google ✓</div>
+    </div>
+    <div class="glass-card settings-section">
+      <div class="settings-section-title">🎨 Appearance</div>
+      <div class="settings-row-title" style="margin-bottom:12px">Theme</div>
+      <div class="theme-selector">
+        <button class="theme-opt" data-val="light" onclick="setTheme('light')">
+          <div class="theme-opt-icon">☀️</div><div class="theme-opt-label">Light</div>
+        </button>
+        <button class="theme-opt" data-val="auto" onclick="setTheme('auto')">
+          <div class="theme-opt-icon">⚙️</div><div class="theme-opt-label">Auto</div>
+        </button>
+        <button class="theme-opt" data-val="dark" onclick="setTheme('dark')">
+          <div class="theme-opt-icon">🌙</div><div class="theme-opt-label">Dark</div>
+        </button>
+      </div>
+      <p class="theme-note">Auto follows your device system setting automatically.</p>
+    </div>
+    <div class="glass-card settings-section">
+      <div class="settings-section-title">📊 This Month</div>
+      <div class="profile-stats-grid">
+        <div class="profile-stat-box"><div class="profile-stat-val" id="ps-income">₹0</div><div class="profile-stat-label">Income</div></div>
+        <div class="profile-stat-box"><div class="profile-stat-val" style="color:var(--red)" id="ps-spent">₹0</div><div class="profile-stat-label">Spent</div></div>
+        <div class="profile-stat-box"><div class="profile-stat-val" style="color:var(--green)" id="ps-saved">₹0</div><div class="profile-stat-label">Saved</div></div>
+        <div class="profile-stat-box"><div class="profile-stat-val" style="color:var(--primary)" id="ps-daily-count">0</div><div class="profile-stat-label">Daily Logs</div></div>
+      </div>
+    </div>
+    <div class="glass-card settings-section">
+      <div class="settings-section-title">⚙️ Account</div>
+      <button class="signout-btn" onclick="handleLogout()">
+        <span>Sign Out</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-tab="home" onclick="switchTab('home')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-btn" data-tab="daily" onclick="switchTab('daily')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Daily</span>
+    </button>
+    <button class="nav-btn" data-tab="expenses" onclick="switchTab('expenses')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      <span>Expenses</span>
+    </button>
+    <button class="nav-btn" data-tab="profile" onclick="switchTab('profile')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </button>
+  </nav>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
